@@ -3,6 +3,8 @@
 //#include <stdlib.h>
 #include <conio.h>
 
+#include <map.h>
+
 HANDLE hCon = GetStdHandle( STD_OUTPUT_HANDLE );
 
 const int DOWN_KEY  = 80;
