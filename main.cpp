@@ -1,46 +1,9 @@
 #include <stdio.h>
 #include <windows.h>
-//#include <stdlib.h>
 #include <conio.h>
 
-#include <map.h>
-
-HANDLE hCon = GetStdHandle( STD_OUTPUT_HANDLE );
-
-const int DOWN_KEY  = 80;
-const int UP_KEY    = 72;
-const int RIGHT_KEY = 77;
-const int LEFT_KEY  = 75;
-const int SHOOT_KEY = 32;
-const int EXIT_KEY  = 27;
-
-const int GUS_1 = 178;
-const int GUS_2 = 176;
-const int WEAPON_U = 220;
-const int WEAPON_D = 223;
-const int WEAPON_R = 221;
-const int WEAPON_L = 222;
-const int CENTR_1 = 186;
-const int CENTR_2 = 202;
-const int CENTR_3 = 205;
-const int CENTR_4 = 203;
-const int CENTR_5 = 204;
-const int CENTR_6 = 185;
-const int SHOOT_U = 30;
-const int SHOOT_D = 31;
-const int SHOOT_R = 16;
-const int SHOOT_L = 17;
-
-const int WIDE = 160;
-const int HIGH = 55;
-
-struct sTank
-{
-    short x;
-    short y;
-    int health;
-    int speed;
-};
+#include "map.h"
+#include "constants.h"
 
 enum eDirection
 {
@@ -48,6 +11,22 @@ enum eDirection
     NORTH,
     EAST,
     WEST
+};
+
+struct sBullet
+{
+    COORD cord;
+    eDirection curs;
+    short strong;
+    int speed;
+};
+
+struct sTank
+{
+    short x;
+    short y;
+    int health;
+    int speed;
 };
 
 void tankDrawForDirection( eDirection direct, sTank *tank )
@@ -62,12 +41,13 @@ void tankDrawForDirection( eDirection direct, sTank *tank )
     case NORTH:
         a = tank->y & 0x001 ? GUS_1 : GUS_2;
         b = tank->y & 0x001 ? GUS_2 : GUS_1;
+        pos.X += 2;
         SetConsoleCursorPosition(hCon, pos);
-        printf("  %c  ", WEAPON_U);
+        printf("%c", WEAPON_U);
         pos.Y++;
         SetConsoleCursorPosition(hCon, pos);
-        printf("  %c  ", CENTR_1);
-        pos.Y++;
+        printf("%c", CENTR_1);
+        pos.Y++; pos.X -= 2;
         SetConsoleCursorPosition(hCon, pos);
         printf("%c%c%c%c%c", a, a, CENTR_2, a, a);
         pos.Y++;
@@ -105,97 +85,109 @@ void tankDrawForDirection( eDirection direct, sTank *tank )
         a = tank->x & 0x001 ? GUS_1 : GUS_2;
         b = tank->x & 0x001 ? GUS_2 : GUS_1;
         SetConsoleCursorPosition(hCon, pos);
-        printf("%c%c%c%c%c%c  ", a, a, b, b, a, a);
+        printf("%c%c%c%c%c%c  ", a, b, a, b, a, b);
         pos.Y++;
         SetConsoleCursorPosition(hCon, pos);
         printf("%c    %c%c%c", CENTR_1, CENTR_5, CENTR_3, WEAPON_R);
         pos.Y++;
         SetConsoleCursorPosition(hCon, pos);
-        printf("%c%c%c%c%c%c  ", a, a, b, b, a, a);
+        printf("%c%c%c%c%c%c  ", a, b, a, b, a, b);
         break;
     case WEST:
         a = tank->x & 0x001 ? GUS_1 : GUS_2;
         b = tank->x & 0x001 ? GUS_2 : GUS_1;
         SetConsoleCursorPosition(hCon, pos);
-        printf("  %c%c%c%c%c%c", a, a, b, b, a, a);
+        printf("  %c%c%c%c%c%c", a, b, a, b, a, b);
         pos.Y++;
         SetConsoleCursorPosition(hCon, pos);
         printf("%c%c%c    %c", WEAPON_L, CENTR_3, CENTR_6, CENTR_1);
         pos.Y++;
         SetConsoleCursorPosition(hCon, pos);
-        printf("  %c%c%c%c%c%c", a, a, b, b, a, a);
+        printf("  %c%c%c%c%c%c", a, b, a, b, a, b);
         break;
     }
 }
 
-COORD getBarrelPosition( eDirection direct, sTank tank )
+sBullet getBarrelPosition( eDirection direct, sTank tank )
 {
-    COORD barrel = { tank.x, tank.y };
+    sBullet barrel;
+    barrel.cord = { tank.x, tank.y };
+    barrel.curs = direct;
     switch (direct)
     {
     case NORTH:
-        barrel.X += 2;
-        barrel.Y -= 1;
+        barrel.cord.X += 2;
+        barrel.cord.Y -= 1;
         break;
     case SOUTH:
-        barrel.X += 2;
-        barrel.Y += 6;
+        barrel.cord.X += 2;
+        barrel.cord.Y += 6;
         break;
     case EAST:
-        barrel.X += 8;
-        barrel.Y += 1;
+        barrel.cord.X += 8;
+        barrel.cord.Y += 1;
         break;
     case WEST:
-        barrel.X -= 1;
-        barrel.Y += 1;
+        barrel.cord.X -= 1;
+        barrel.cord.Y += 1;
         break;
     }
     return barrel;
 }
 
-void shootTank( COORD barrel, eDirection direct )
+void shootTank( sBullet *bullet, bool *shoot )
 {
-    switch (direct)
+
+    switch (bullet->curs)
     {
     case NORTH:
-        for(  ; barrel.Y >= 0 ; barrel.Y -= 2 )
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf(" ");
+        bullet->cord.Y -= 1;
+        if( bullet->cord.Y < 0 )
         {
-            SetConsoleCursorPosition( hCon, barrel );
-            printf("%c", SHOOT_U);
-            Sleep(100);
-            SetConsoleCursorPosition( hCon, barrel );
-            printf(" ");
+            *shoot = false;
+            return;
         }
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf("%c", SHOOT_U);
         break;
     case SOUTH:
-        for(  ; barrel.Y <= HIGH ; barrel.Y += 2 )
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf(" ");
+        bullet->cord.Y += 1;
+        if( bullet->cord.Y >= HIGH )
         {
-            SetConsoleCursorPosition( hCon, barrel );
-            printf("%c", SHOOT_D);
-            Sleep(100);
-            SetConsoleCursorPosition( hCon, barrel );
-            printf(" ");
+            *shoot = false;
+            return;
         }
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf("%c", SHOOT_D);
         break;
     case EAST:
-        for(  ; barrel.X <= WIDE ; barrel.X += 4 )
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf(" ");
+        bullet->cord.X += 2;
+        if( bullet->cord.X >= WIDE )
         {
-            SetConsoleCursorPosition( hCon, barrel );
-            printf("%c", SHOOT_R);
-            Sleep(100);
-            SetConsoleCursorPosition( hCon, barrel );
-            printf(" ");
+            *shoot = false;
+            return;
         }
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf("%c", SHOOT_R);
         break;
     case WEST:
-        for(  ; barrel.X >= 0 ; barrel.X -= 4 )
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf(" ");
+        bullet->cord.X -= 2;
+        if( bullet->cord.X <= 0 )
         {
-            SetConsoleCursorPosition( hCon, barrel );
-            printf("%c", SHOOT_L);
-            Sleep(100);
-            SetConsoleCursorPosition( hCon, barrel );
-            printf(" ");
+            *shoot = false;
+            return;
         }
+        SetConsoleCursorPosition( hCon, bullet->cord );
+        printf("%c", SHOOT_L);
+        break;
     }
 }
 
@@ -254,9 +246,7 @@ int main()
 {
     system("mode con cols=160 lines=55");
 
-
     CONSOLE_CURSOR_INFO cci;
-//    GetConsoleCursorInfo( hCon, &cci );
     cci.bVisible = false; //visible cursor
     cci.dwSize = 1;       // size of cursor
     SetConsoleCursorInfo( hCon, &cci );
@@ -273,7 +263,8 @@ int main()
     eDirection curs = NORTH;
     bool horisont = ( curs == NORTH || curs == SOUTH ) ? false : true;
     bool vertical = ( curs == NORTH || curs == SOUTH ) ? true : false;
-    COORD barrel;
+    sBullet bullet;
+    bool isBullet = false;
 
     tankDrawForDirection( curs, &stanks[0]);
     tankDrawForDirection( NORTH, &stanks[1]);
@@ -283,7 +274,6 @@ int main()
         if( kbhit() != 0 )
         {
             comm = getch();
-//            printf("%d", comm);
             isRedDraw = true;
 
             switch( comm )
@@ -312,21 +302,32 @@ int main()
                 stanks[0].x = --stanks[0].x <= 0 ? 0 : stanks[0].x;
                 checkChangeMove( &vertical, &horisont );
                 break;
-            case SHOOT_KEY:
-                barrel = getBarrelPosition( curs, stanks[0] );
-                shootTank( barrel, curs );
+            case SHOOT_KEY:            
+                if( ! isBullet )
+                {
+                    isBullet = true;
+                    Beep(1000, 25);
+                    bullet = getBarrelPosition( curs, stanks[0] );
+                }
+                comm = 0;
                 break;
             case EXIT_KEY:
-
                 return 0;
             }
         }
+
+        if( isBullet )
+        {
+            shootTank( &bullet, &isBullet );
+        }
+
         if(isRedDraw)
         {
             tankDrawForDirection( curs, &stanks[0]);
-            tankDrawForDirection( curs, &stanks[1]);
+            tankDrawForDirection( NORTH, &stanks[1]);
             isRedDraw = false;
         }
+        Sleep(40);
     }
 
 
